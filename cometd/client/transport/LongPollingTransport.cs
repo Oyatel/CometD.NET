@@ -60,19 +60,95 @@ namespace Cometd.Client.Transport
 		{
 		}
 
+        // Fix for not running more than two simulataneous requests:
+        public class LongPollingRequest
+        {
+            ITransportListener listener;
+            IList<IMutableMessage> messages;
+            HttpWebRequest request;
+            public TransportExchange exchange;
+
+            public LongPollingRequest(ITransportListener _listener, IList<IMutableMessage> _messages,
+                HttpWebRequest _request)
+            {
+                listener = _listener;
+                messages = _messages;
+                request = _request;
+            }
+
+            public void send()
+            {
+                try
+                {
+                    request.BeginGetRequestStream(new AsyncCallback(GetRequestStreamCallback), exchange);
+                }
+                catch (Exception e)
+                {
+                    exchange.Dispose();
+                    listener.onException(e, ObjectConverter.ToListOfIMessage(messages));
+                }
+            }
+        }
+        
+        private ManualResetEvent ready = new ManualResetEvent(true);
+        private List<LongPollingRequest> transportQueue = new List<LongPollingRequest>();
+        private HashSet<LongPollingRequest> transmissions = new HashSet<LongPollingRequest>();
+
+        private void performNextRequest()
+        {
+            bool ok = false;
+            LongPollingRequest nextRequest = null;
+
+            lock (this)
+            {
+                if (transportQueue.Count > 0 && transmissions.Count <= 2)
+                {
+                    ok = true;
+                    nextRequest = transportQueue[0];
+                    transportQueue.Remove(nextRequest);
+                    transmissions.Add(nextRequest);
+                }
+            }
+
+            if (ok && nextRequest != null)
+            {
+                nextRequest.send();
+            }
+        }
+
+        public void addRequest(LongPollingRequest request)
+        {
+            lock (this)
+            {
+                transportQueue.Add(request);
+            }
+
+            performNextRequest();
+        }
+
+        public void removeRequest(LongPollingRequest request)
+        {
+            lock (this)
+            {
+                transmissions.Remove(request);
+            }
+
+            performNextRequest();
+        }
+
         public override void send(ITransportListener listener, IList<IMutableMessage> messages)
 		{
             //Console.WriteLine();
             //Console.WriteLine("send({0} message(s))", messages.Count);
             String url = getURL();
-            
+
             if (_appendMessageType && messages.Count == 1 && messages[0].Meta)
-			{
-				String type = messages[0].Channel.Substring(Channel_Fields.META.Length);
-				if (url.EndsWith("/"))
-					url = url.Substring(0, url.Length -1);
-				url += type;
-			}
+            {
+                String type = messages[0].Channel.Substring(Channel_Fields.META.Length);
+                if (url.EndsWith("/"))
+                    url = url.Substring(0, url.Length - 1);
+                url += type;
+            }
 
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             request.Method = "POST";
@@ -85,21 +161,16 @@ namespace Cometd.Client.Transport
             JavaScriptSerializer jsonParser = new JavaScriptSerializer();
             String content = jsonParser.Serialize(ObjectConverter.ToListOfDictionary(messages));
 
-            TransportExchange exchange = new TransportExchange(this, listener, messages);
+            LongPollingRequest longPollingRequest = new LongPollingRequest(listener, messages, request);
+
+            TransportExchange exchange = new TransportExchange(this, listener, messages, longPollingRequest);
             exchange.content = content;
             exchange.request = request;
             _exchanges.Add(exchange);
 
-            try
-            {
-                request.BeginGetRequestStream(new AsyncCallback(GetRequestStreamCallback), exchange);
-            }
-            catch (Exception e)
-            {
-                exchange.Dispose();
-                listener.onException(e, ObjectConverter.ToListOfIMessage(messages));
-            }
-		}
+            longPollingRequest.exchange = exchange;
+            addRequest(longPollingRequest);
+        }
 
         // From http://msdn.microsoft.com/en-us/library/system.net.httpwebrequest.begingetrequeststream.aspx
         private static void GetRequestStreamCallback(IAsyncResult asynchronousResult)
@@ -193,18 +264,22 @@ namespace Cometd.Client.Transport
             public HttpWebResponse response;
             public ITransportListener listener;
             public IList<IMutableMessage> messages;
+            public LongPollingRequest lprequest;
 
-            public TransportExchange(LongPollingTransport _parent, ITransportListener _listener, IList<IMutableMessage> _messages)
+            public TransportExchange(LongPollingTransport _parent, ITransportListener _listener, IList<IMutableMessage> _messages,
+                LongPollingRequest _lprequest)
             {
                 parent = _parent;
                 listener = _listener;
                 messages = _messages;
                 request = null;
                 response = null;
+                lprequest = _lprequest;
             }
 
             public void Dispose()
             {
+                parent.removeRequest(lprequest);
                 parent._exchanges.Remove(this);
             }
         }
