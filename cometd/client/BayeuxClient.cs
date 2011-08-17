@@ -194,7 +194,9 @@ namespace Cometd.Client
         {
 			handshake(template);
             ICollection<State> states = new List<State>();
+            // The definition of a completed handshake is one of these states: Connected, Connecting or Disconnected
             states.Add(State.CONNECTED);
+            states.Add(State.CONNECTING);
             states.Add(State.DISCONNECTED);
 			return waitFor(waitMs, states);
         }
