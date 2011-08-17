@@ -194,7 +194,7 @@ namespace Cometd.Client
         {
 			handshake(template);
             ICollection<State> states = new List<State>();
-            states.Add(State.CONNECTING);
+            states.Add(State.CONNECTED);
             states.Add(State.DISCONNECTED);
 			return waitFor(waitMs, states);
         }
