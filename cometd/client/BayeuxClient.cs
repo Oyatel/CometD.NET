@@ -225,8 +225,7 @@ namespace Cometd.Client
 		
         public State waitFor(int waitMs, ICollection<State> states)
         {
-            DateTime stop = DateTime.Now;
-            stop.AddMilliseconds(waitMs);
+            DateTime stop = DateTime.Now.AddMilliseconds(waitMs);
             int duration = waitMs;
 
             while (stateChanged.WaitOne(duration))
@@ -235,7 +234,7 @@ namespace Cometd.Client
                 if (states.Contains(s))
                     return s;
 
-                duration = (stop - DateTime.Now).Milliseconds;
+                duration = (int)(stop - DateTime.Now).TotalMilliseconds;
                 if (duration <= 0) break;
             }
 
