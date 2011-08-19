@@ -369,7 +369,7 @@ namespace Cometd.Common
 
             public void notifyMessageListeners(IMessage message)
 			{
-				foreach (IClientSessionChannelListener listener in _listeners)
+                foreach (IClientSessionChannelListener listener in _listeners)
 				{
 					if (listener is IMessageListener)
 					{
@@ -385,7 +385,8 @@ namespace Cometd.Common
 					}
 				}
 
-                foreach (IClientSessionChannelListener listener in _subscriptions)
+                var list = new List<IMessageListener>(_subscriptions);
+                foreach (IClientSessionChannelListener listener in list)
 				{
 					if (listener is IMessageListener)
 					{
