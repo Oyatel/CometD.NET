@@ -223,7 +223,8 @@ namespace Cometd.Common
 
             foreach (IDictionary<String, Object> message in dictionaryList)
             {
-                messages.Add( new DictionaryMessage(message) );
+                if(message != null)
+                    messages.Add( new DictionaryMessage(message) );
             }
 
             return messages;

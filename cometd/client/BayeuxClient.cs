@@ -194,6 +194,8 @@ namespace Cometd.Client
         {
 			handshake(template);
             ICollection<State> states = new List<State>();
+            // The definition of a completed handshake is one of these states: Connected, Connecting or Disconnected
+            states.Add(State.CONNECTED);
             states.Add(State.CONNECTING);
             states.Add(State.DISCONNECTED);
 			return waitFor(waitMs, states);
@@ -225,8 +227,7 @@ namespace Cometd.Client
 		
         public State waitFor(int waitMs, ICollection<State> states)
         {
-            DateTime stop = DateTime.Now;
-            stop.AddMilliseconds(waitMs);
+            DateTime stop = DateTime.Now.AddMilliseconds(waitMs);
             int duration = waitMs;
 
             while (stateChanged.WaitOne(duration))
@@ -235,7 +236,7 @@ namespace Cometd.Client
                 if (states.Contains(s))
                     return s;
 
-                duration = (stop - DateTime.Now).Milliseconds;
+                duration = (int)(stop - DateTime.Now).TotalMilliseconds;
                 if (duration <= 0) break;
             }
 
