@@ -32,42 +32,42 @@ namespace Cometd.Bayeux
 	/// <version>  $Revision: 1483 $ $Date: 2009-03-04 14:56:47 +0100 (Wed, 04 Mar 2009) $
 	/// </version>
 
-    public class Channel_Fields
-    {
-        public const String META = "/meta";
-        public const String META_HANDSHAKE = Channel_Fields.META + "/handshake";
-        public const String META_CONNECT = Channel_Fields.META + "/connect";
-        public const String META_SUBSCRIBE = Channel_Fields.META + "/subscribe";
-        public const String META_UNSUBSCRIBE = Channel_Fields.META + "/unsubscribe";
-        public const String META_DISCONNECT = Channel_Fields.META + "/disconnect";
-    }
+	public class Channel_Fields
+	{
+		public const String META = "/meta";
+		public const String META_HANDSHAKE = Channel_Fields.META + "/handshake";
+		public const String META_CONNECT = Channel_Fields.META + "/connect";
+		public const String META_SUBSCRIBE = Channel_Fields.META + "/subscribe";
+		public const String META_UNSUBSCRIBE = Channel_Fields.META + "/unsubscribe";
+		public const String META_DISCONNECT = Channel_Fields.META + "/disconnect";
+	}
 
 	public interface IChannel
 	{
-        /// <returns> The channel id as a String
+		/// <returns> The channel id as a String
 		/// </returns>
 		String Id { get; }
 
-        /// <returns> The channel ID as a {@link ChannelId}
+		/// <returns> The channel ID as a {@link ChannelId}
 		/// </returns>
 		ChannelId ChannelId { get; }
 
-        /// <returns> true if the channel is a meta channel
+		/// <returns> true if the channel is a meta channel
 		/// </returns>
 		bool Meta { get; }
 
-        /// <returns> true if the channel is a service channel
+		/// <returns> true if the channel is a service channel
 		/// </returns>
-        bool Service { get; }
+		bool Service { get; }
 
-        /// <returns> true if the channel is wild.
+		/// <returns> true if the channel is wild.
 		/// </returns>
 		bool Wild { get; }
 
-        /// <returns> true if the channel is deeply wild.
+		/// <returns> true if the channel is deeply wild.
 		/// </returns>
 		bool DeepWild { get; }
-		
+
 		/// <summary> <p>Sets a named channel attribute value.</p>
 		/// <p>Channel attributes are convenience data that allows arbitrary
 		/// application data to be associated with a channel.</p>
@@ -77,23 +77,23 @@ namespace Cometd.Bayeux
 		/// <param name="value">the attribute value
 		/// </param>
 		void setAttribute(String name, Object value);
-		
+
 		/// <summary> <p>Retrieves the value of named channel attribute.</p></summary>
 		/// <param name="name">the name of the attribute
 		/// </param>
 		/// <returns> the attribute value or null if the attribute is not present
 		/// </returns>
 		Object getAttribute(String name);
-		
+
 		/// <returns> the list of channel attribute names.
 		/// </returns>
-        ICollection<String> AttributeNames { get; }
-	
-	    /// <summary> <p>Removes a named channel attribute.</p></summary>
-	    /// <param name="name">the name of the attribute
-	    /// </param>
-	    /// <returns> the value of the attribute
-	    /// </returns>
-	    Object removeAttribute(String name);
+		ICollection<String> AttributeNames { get; }
+
+		/// <summary> <p>Removes a named channel attribute.</p></summary>
+		/// <param name="name">the name of the attribute
+		/// </param>
+		/// <returns> the value of the attribute
+		/// </returns>
+		Object removeAttribute(String name);
 	}
 }

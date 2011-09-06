@@ -50,7 +50,7 @@ namespace Cometd.Bayeux
 		/// <seealso cref="IBayeux.getAllowedTransports()">
 		/// </seealso>
 		String Name { get; }
-		
+
 		/// <param name="name">the configuration option name
 		/// </param>
 		/// <returns> the configuration option with the given {@code qualifiedName}
@@ -58,18 +58,18 @@ namespace Cometd.Bayeux
 		/// <seealso cref="getOptionNames()">
 		/// </seealso>
 		Object getOption(String name);
-		
+
 		/// <returns> the set of configuration options
 		/// </returns>
 		/// <seealso cref="getOption(String)">
 		/// </seealso>
-        ICollection<String> OptionNames { get; }
-	
-	    /// <summary> Specifies an option prefix made of string segments separated by the "."
-	    /// character, used to override more generic configuration entries.
-	    /// </summary>
-	    /// <returns> the option prefix for this transport.
-	    /// </returns>
-        String OptionPrefix { get; }
-    }
+		ICollection<String> OptionNames { get; }
+
+		/// <summary> Specifies an option prefix made of string segments separated by the "."
+		/// character, used to override more generic configuration entries.
+		/// </summary>
+		/// <returns> the option prefix for this transport.
+		/// </returns>
+		String OptionPrefix { get; }
+	}
 }
