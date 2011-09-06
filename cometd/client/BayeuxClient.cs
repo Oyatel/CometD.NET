@@ -9,47 +9,6 @@ using Cometd.Client.Transport;
 using Cometd.Common;
 
 
-/**
-* <p>Typical usage:</p>
-* <pre>
-        class Listener : IMessageListener
-        {
-                public void onMessage(IClientSessionChannel channel, IMessage message)
-                {
-                    // Handle the message
-                }
-        }
-
-        static void Main(string[] args)
-        {
-            // Handshake
-            String url = "http://localhost:8080/cometd";
-            IList<ClientTransport> transports = new List<ClientTransport>();
-            transports.Add(new LongPollingTransport(null));
-            BayeuxClient client = new BayeuxClient(url, transports);
-            client.handshake();
-
-            IList<BayeuxClient.State> connectedState = new List<BayeuxClient.State>();
-            connectedState.Add(BayeuxClient.State.CONNECTED);
-            client.waitFor(1000, connectedState);
-
-            // Subscription to channels
-            IClientSessionChannel channel = client.getChannel("/foo");
-            channel.subscribe( new Listener() );
-
-            // Publishing to channels
-            Dictionary<String, Object> data = new Dictionary<String, Object>();
-            data.Add("bar", "baz");
-            channel.publish(data);
-
-            // Disconnecting
-            client.disconnect();
-            IList<BayeuxClient.State> disconnectedState = new List<BayeuxClient.State>();
-            disconnectedState.Add(BayeuxClient.State.DISCONNECTED);
-            client.waitFor(1000, disconnectedState);
-        }
-* </pre>
-*/
 namespace Cometd.Client
 {
 	/// <summary> </summary>
@@ -71,7 +30,7 @@ namespace Cometd.Client
 		private ITransportListener publishListener;
 		private long backoffIncrement;
 		private long maxBackoff;
-		private readonly object stateUpdateInProgressLock;
+		private static Mutex stateUpdateInProgressMutex = new Mutex();
 		private int stateUpdateInProgress;
 		private AutoResetEvent stateChanged = new AutoResetEvent(false);
 
@@ -677,10 +636,9 @@ namespace Cometd.Client
 
 		private void updateBayeuxClientState(BayeuxClientStateUpdater_createDelegate create, BayeuxClientStateUpdater_postCreateDelegate postCreate)
 		{
-			lock (stateUpdateInProgressLock)
-			{
-				++stateUpdateInProgress;
-			}
+			stateUpdateInProgressMutex.WaitOne();
+			++stateUpdateInProgress;
+			stateUpdateInProgressMutex.ReleaseMutex();
 
 			BayeuxClientState newState = null;
 			BayeuxClientState oldState = bayeuxClientState;
@@ -705,13 +663,12 @@ namespace Cometd.Client
 			newState.execute();
 
 			// Notify threads waiting in waitFor()
-			lock (stateUpdateInProgressLock)
-			{
-				--stateUpdateInProgress;
+			stateUpdateInProgressMutex.WaitOne();
+			--stateUpdateInProgress;
 
-				if (stateUpdateInProgress == 0)
-					stateChanged.Set();
-			}
+			if (stateUpdateInProgress == 0)
+				stateChanged.Set();
+			stateUpdateInProgressMutex.ReleaseMutex();
 		}
 
 		public String dump()
