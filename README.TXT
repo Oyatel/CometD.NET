@@ -29,14 +29,10 @@ Typical usage:
         {
             // Handshake
             String url = "http://localhost:8080/cometd";
-            IList<ClientTransport> transports = new List<ClientTransport>();
-            transports.Add(new LongPollingTransport(null));
-            BayeuxClient client = new BayeuxClient(url, transports);
-            client.handshake();
-
-            IList<BayeuxClient.State> connectedState = new List<BayeuxClient.State>();
-            connectedState.Add(BayeuxClient.State.CONNECTED);
-            client.waitFor(1000, connectedState);
+            BayeuxClient client = new BayeuxClient(url, new List<ClientTransport>() { new LongPollingTransport(null) });
+            
+	    client.handshake();
+	    client.waitFor(1000, new List<BayeuxClient.State>() { BayeuxClient.State.CONNECTED });
 
             // Subscription to channels
             IClientSessionChannel channel = client.getChannel("/foo");
@@ -49,8 +45,6 @@ Typical usage:
 
             // Disconnecting
             client.disconnect();
-            IList<BayeuxClient.State> disconnectedState = new List<BayeuxClient.State>();
-            disconnectedState.Add(BayeuxClient.State.DISCONNECTED);
-            client.waitFor(1000, disconnectedState);
+	    client.waitFor(1000, new List<BayeuxClient.State>() { BayeuxClient.State.DISCONNECTED });
         }
 
