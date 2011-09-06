@@ -12,111 +12,111 @@ namespace Cometd.Common
 	/// </summary>
 	public abstract class AbstractClientSession : IClientSession
 	{
-        // @@ax: WARNING Should implement thread safety, as in http://msdn.microsoft.com/en-us/library/3azh197k.aspx
+		// @@ax: WARNING Should implement thread safety, as in http://msdn.microsoft.com/en-us/library/3azh197k.aspx
 		private List<IExtension> _extensions = new List<IExtension>();
-		private Dictionary<String, Object>_attributes = new Dictionary<String, Object>();
-        private Dictionary<String, AbstractSessionChannel> _channels = new Dictionary<String, AbstractSessionChannel>();
-        private int _batch;
+		private Dictionary<String, Object> _attributes = new Dictionary<String, Object>();
+		private Dictionary<String, AbstractSessionChannel> _channels = new Dictionary<String, AbstractSessionChannel>();
+		private int _batch;
 		private int _idGen = 0;
 
 		protected AbstractClientSession()
 		{
 		}
 
-        protected String newMessageId()
+		protected String newMessageId()
 		{
 			return Convert.ToString(_idGen++);
 		}
-						
+
 		public void addExtension(IExtension extension)
 		{
 			_extensions.Add(extension);
 		}
-		
+
 		public void removeExtension(IExtension extension)
 		{
 			_extensions.Remove(extension);
 		}
-		
+
 		protected bool extendSend(IMutableMessage message)
 		{
 			if (message.Meta)
 			{
 				foreach (IExtension extension in _extensions) 
-				    if(!extension.sendMeta(this, message)) 
-				        return false;
+					if(!extension.sendMeta(this, message)) 
+						return false;
 			}
 			else
 			{
 				foreach (IExtension extension in _extensions) 
-				    if(!extension.send(this, message))
-				        return false;
+					if(!extension.send(this, message))
+						return false;
 			}
 			return true;
 		}
-		
+
 		protected bool extendRcv(IMutableMessage message)
 		{
 			if (message.Meta)
 			{
 				foreach (IExtension extension in _extensions) 
-				    if(!extension.rcvMeta(this, message)) 
-				        return false;
+					if(!extension.rcvMeta(this, message)) 
+						return false;
 			}
 			else
 			{
 				foreach (IExtension extension in _extensions) 
-				    if(!extension.rcv(this, message)) 
-				        return false;
+					if(!extension.rcv(this, message)) 
+						return false;
 			}
 			return true;
 		}
-		
+
 		/* ------------------------------------------------------------ */
 		protected abstract ChannelId newChannelId(String channelId);
-		
+
 		/* ------------------------------------------------------------ */
 		protected abstract AbstractSessionChannel newChannel(ChannelId channelId);
-		
+
 		/* ------------------------------------------------------------ */
 		public IClientSessionChannel getChannel(String channelId)
 		{
 			AbstractSessionChannel channel;
-            _channels.TryGetValue(channelId, out channel);
+			_channels.TryGetValue(channelId, out channel);
 
-            if (channel == null)
+			if (channel == null)
 			{
 				ChannelId id = newChannelId(channelId);
 				AbstractSessionChannel new_channel = newChannel(id);
 
-                if (_channels.ContainsKey(channelId))
-                    channel = _channels[channelId];
-                else
-				    _channels[channelId] = new_channel;
+				if (_channels.ContainsKey(channelId))
+					channel = _channels[channelId];
+				else
+					_channels[channelId] = new_channel;
 
-                if (channel == null)
+				if (channel == null)
 					channel = new_channel;
 			}
 			return channel;
 		}
 
 		protected Dictionary<String, AbstractSessionChannel> Channels
-        {
-            get
-            {
-                return _channels;
-            }
-        }
-		
+		{
+			get
+			{
+				return _channels;
+			}
+		}
+
 		/* ------------------------------------------------------------ */
 		public void startBatch()
 		{
 			_batch++;
 		}
-		
+
 		/* ------------------------------------------------------------ */
 		protected abstract void sendBatch();
-		
+
 		/* ------------------------------------------------------------ */
 		public bool endBatch()
 		{
@@ -127,7 +127,7 @@ namespace Cometd.Common
 			}
 			return false;
 		}
-		
+
 		/* ------------------------------------------------------------ */
 		public void batch(BatchDelegate batch)
 		{
@@ -141,53 +141,62 @@ namespace Cometd.Common
 				endBatch();
 			}
 		}
-		
-        protected bool Batching
+
+		protected bool Batching
 		{
 			get
 			{
 				return _batch > 0;
 			}
-			
+
 		}
 		/* ------------------------------------------------------------ */
 		public Object getAttribute(String name)
 		{
-            Object obj;
-            _attributes.TryGetValue(name, out obj);
+			Object obj;
+			_attributes.TryGetValue(name, out obj);
 			return obj;
 		}
-		
+
 		/* ------------------------------------------------------------ */
 		public ICollection<String> AttributeNames
-        {
-            get
-            {
-                return _attributes.Keys;
-            }
-        }
-		
+		{
+			get
+			{
+				return _attributes.Keys;
+			}
+		}
+
 		/* ------------------------------------------------------------ */
 		public Object removeAttribute(String name)
 		{
-            try
-            {
-                Object old = _attributes[name];
-                _attributes.Remove(name);
-                return old;
-            }
-            catch (Exception)
-            {
-                return null;
-            }
+			try
+			{
+				Object old = _attributes[name];
+				_attributes.Remove(name);
+				return old;
+			}
+			catch (Exception)
+			{
+				return null;
+			}
 		}
-		
+
 		/* ------------------------------------------------------------ */
 		public void setAttribute(String name, Object val)
 		{
 			_attributes[name] = val;
 		}
-		
+
+		/* ------------------------------------------------------------ */
+		public void resetSubscriptions()
+		{
+			foreach (KeyValuePair<String, AbstractSessionChannel> channel in _channels)
+			{
+				channel.Value.resetSubscriptions();
+			}
+		}
+
 		/* ------------------------------------------------------------ */
 		/// <summary> <p>Receives a message (from the server) and process it.</p>
 		/// <p>Processing the message involves calling the receive {@link ClientSession.Extension extensions}
@@ -204,15 +213,15 @@ namespace Cometd.Common
 			{
 				throw new ArgumentException("Bayeux messages must have a channel, " + message);
 			}
-			
+
 			if (!extendRcv(message))
 				return;
-			
+
 			AbstractSessionChannel channel = (AbstractSessionChannel) getChannel(id);
 			ChannelId channelId = channel.ChannelId;
 
-            channel.notifyMessageListeners(message);
-			
+			channel.notifyMessageListeners(message);
+
 			foreach (String channelPattern in channelId.Wilds)
 			{
 				ChannelId channelIdPattern = newChannelId(channelPattern);
@@ -224,31 +233,13 @@ namespace Cometd.Common
 			}
 		}
 
-        public abstract void handshake(IDictionary<String, Object> template);
-        public abstract void handshake();
-        public abstract void disconnect();
-        public abstract bool Handshook { get; }
-        public abstract String Id { get; }
-        public abstract bool Connected { get; }
+		public abstract void handshake(IDictionary<String, Object> template);
+		public abstract void handshake();
+		public abstract void disconnect();
+		public abstract bool Handshook { get; }
+		public abstract String Id { get; }
+		public abstract bool Connected { get; }
 
-        /* // @@ax: WARNING
-		public void dump(StringBuilder b, String indent)
-		{
-			//UPGRADE_TODO: The equivalent in .NET for method 'java.lang.Object.toString' may return a different value. "ms-help://MS.VSCC.v80/dv_commoner/local/redirect.htm?index='!DefaultContextWindowIndex'&keyword='jlca1043'"
-			b.append(ToString());
-			b.append('\n');
-			
-			int leaves = _channels.size();
-			int i = 0;
-			//UPGRADE_ISSUE: The following fragment of code could not be parsed and was not converted. "ms-help://MS.VSCC.v80/dv_commoner/local/redirect.htm?index='!DefaultContextWindowIndex'&keyword='jlca1156'"
-			for(AbstractSessionChannel child: _channels.values())
-			{
-				b.append(indent);
-				b.append(" +-");
-				child.dump(b, indent + ((++i == leaves)?"   ":" | "));
-			}
-		}*/
-		
 		/// <summary> <p>A channel scoped to a {@link ClientSession}.</p></summary>
 		public abstract class AbstractSessionChannel : IClientSessionChannel
 		{
@@ -258,13 +249,13 @@ namespace Cometd.Common
 			private List<IMessageListener> _subscriptions = new List<IMessageListener>();
 			private int _subscriptionCount = 0;
 			private List<IClientSessionChannelListener> _listeners = new List<IClientSessionChannelListener>();
-			
+
 			/* ------------------------------------------------------------ */
 			public AbstractSessionChannel(ChannelId id)
 			{
 				_id = id;
 			}
-			
+
 			/* ------------------------------------------------------------ */
 			public ChannelId ChannelId
 			{
@@ -274,54 +265,64 @@ namespace Cometd.Common
 				}
 			}
 
-            /* ------------------------------------------------------------ */
+			/* ------------------------------------------------------------ */
 			public void addListener(IClientSessionChannelListener listener)
 			{
 				_listeners.Add(listener);
 			}
-			
+
 			/* ------------------------------------------------------------ */
 			public void removeListener(IClientSessionChannelListener listener)
 			{
 				_listeners.Remove(listener);
 			}
-			
+
 			/* ------------------------------------------------------------ */
 			protected abstract void sendSubscribe();
-			
+
 			/* ------------------------------------------------------------ */
 			protected abstract void sendUnSubscribe();
-			
+
 			/* ------------------------------------------------------------ */
 			public void subscribe(IMessageListener listener)
 			{
-                _subscriptions.Add(listener);
+				_subscriptions.Add(listener);
 
-                _subscriptionCount++;
-                int count = _subscriptionCount;
+				_subscriptionCount++;
+				int count = _subscriptionCount;
 				if (count == 1)
 					sendSubscribe();
 			}
-			
+
 			/* ------------------------------------------------------------ */
 			public void unsubscribe(IMessageListener listener)
 			{
-                _subscriptions.Remove(listener);
+				_subscriptions.Remove(listener);
 
-                _subscriptionCount--;
-                if (_subscriptionCount < 0) _subscriptionCount = 0;
-                int count = _subscriptionCount;               
-                if (count == 0)
+				_subscriptionCount--;
+				if (_subscriptionCount < 0) _subscriptionCount = 0;
+				int count = _subscriptionCount;               
+				if (count == 0)
 					sendUnSubscribe();
 			}
-			
+
 			/* ------------------------------------------------------------ */
 			public void unsubscribe()
 			{
 				foreach (IMessageListener listener in _subscriptions) 
-				    unsubscribe(listener);
+					unsubscribe(listener);
 			}
-			
+
+			/* ------------------------------------------------------------ */
+			public void resetSubscriptions()
+			{
+				foreach (IMessageListener listener in _subscriptions)
+				{
+					_subscriptions.Remove(listener);
+					_subscriptionCount--;
+				}
+			}
+
 			/* ------------------------------------------------------------ */
 			public String Id
 			{
@@ -332,7 +333,7 @@ namespace Cometd.Common
 			}
 
 			/* ------------------------------------------------------------ */
-            public bool DeepWild
+			public bool DeepWild
 			{
 				get
 				{
@@ -341,7 +342,7 @@ namespace Cometd.Common
 			}
 
 			/* ------------------------------------------------------------ */
-            public bool Meta
+			public bool Meta
 			{
 				get
 				{
@@ -350,7 +351,7 @@ namespace Cometd.Common
 			}
 
 			/* ------------------------------------------------------------ */
-            public bool Service
+			public bool Service
 			{
 				get
 				{
@@ -359,7 +360,7 @@ namespace Cometd.Common
 			}
 
 			/* ------------------------------------------------------------ */
-            public bool Wild
+			public bool Wild
 			{
 				get
 				{
@@ -367,9 +368,9 @@ namespace Cometd.Common
 				}
 			}
 
-            public void notifyMessageListeners(IMessage message)
+			public void notifyMessageListeners(IMessage message)
 			{
-                foreach (IClientSessionChannelListener listener in _listeners)
+				foreach (IClientSessionChannelListener listener in _listeners)
 				{
 					if (listener is IMessageListener)
 					{
@@ -379,14 +380,14 @@ namespace Cometd.Common
 						}
 						catch (Exception x)
 						{
-                            Console.WriteLine("{0}", x);
+							Console.WriteLine("{0}", x);
 							//logger.info(x);
 						}
 					}
 				}
 
-                var list = new List<IMessageListener>(_subscriptions);
-                foreach (IClientSessionChannelListener listener in list)
+				var list = new List<IMessageListener>(_subscriptions);
+				foreach (IClientSessionChannelListener listener in list)
 				{
 					if (listener is IMessageListener)
 					{
@@ -398,65 +399,40 @@ namespace Cometd.Common
 							}
 							catch (System.Exception x)
 							{
-                                Console.WriteLine("{0}", x);
-                                //logger.info(x);
+								Console.WriteLine("{0}", x);
+								//logger.info(x);
 							}
 						}
 					}
 				}
 			}
-			
+
 			public void setAttribute(String name, Object val)
 			{
 				_attributes[name] = val;
 			}
-			
+
 			public Object getAttribute(String name)
 			{
-                Object obj;
-                _attributes.TryGetValue(name, out obj);
+				Object obj;
+				_attributes.TryGetValue(name, out obj);
 				return obj;
 			}
-			
-   			public ICollection<String> AttributeNames
-            {
-                get
-                {
-                    return _attributes.Keys;
-                }
-            }
-			
+
+			public ICollection<String> AttributeNames
+			{
+				get
+				{
+					return _attributes.Keys;
+				}
+			}
+
 			public Object removeAttribute(String name)
 			{
 				Object old = getAttribute(name);
 				_attributes.Remove(name);
 				return old;
 			}
-			
-            /* @@ax: WARNING
-			protected void dump(StringBuilder b, System.String indent)
-			{
-				b.append(ToString());
-				b.append('\n');
-				
-				//UPGRADE_ISSUE: The following fragment of code could not be parsed and was not converted. "ms-help://MS.VSCC.v80/dv_commoner/local/redirect.htm?index='!DefaultContextWindowIndex'&keyword='jlca1156'"
-				for(ClientSessionChannelListener child: _listeners)
-				{
-					b.append(indent);
-					b.append(" +-");
-					b.append(child);
-					b.append('\n');
-				}
-				//UPGRADE_ISSUE: The following fragment of code could not be parsed and was not converted. "ms-help://MS.VSCC.v80/dv_commoner/local/redirect.htm?index='!DefaultContextWindowIndex'&keyword='jlca1156'"
-				for(MessageListener child: _subscriptions)
-				{
-					b.append(indent);
-					b.append(" +-");
-					b.append(child);
-					b.append('\n');
-				}
-			}
-             * */
 
 			public abstract IClientSession Session{ get; }
 
@@ -466,7 +442,7 @@ namespace Cometd.Common
 				return _id.ToString();
 			}
 
-            public abstract void publish(Object param1);
+			public abstract void publish(Object param1);
 			public abstract void publish(Object param1, String param2);
 		}
 	}
