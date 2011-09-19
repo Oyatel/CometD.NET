@@ -11,31 +11,43 @@ RUNNING COMETD CLIENT
 
 The CometD.NET client won't work without a bayeux/cometd server to connect to. If you have installed the cometd server from cometd.org, you should be able to connect to it.
 
+DEPENDENCIES
+
+The CometD.NET client library is set to compile with .NET Framework 3.5, and does not support .NET Framework Client Profile. If you get an error about a dependency on "System.Web.Extensions", you should go to your project properties and change to a framework without Client Profile.
+
 USAGE EXAMPLES
 
 Usage is basically the same as http://cometd.org/documentation/cometd-java/client . You can also look at https://github.com/Oyatel/oyatel-api-examples/blob/master/csharp/Oyatel.Connect.Tutorial/StreamingEvents.cs to see how we use it to communicate with our own bayeux-server.
 
 Typical usage:
 
+using Cometd.Client;
+using Cometd.Client.Transport;
+using Cometd.Bayeux;
+using Cometd.Bayeux.Client;
+using Cometd.Common;
+
+...
         class Listener : IMessageListener
         {
                 public void onMessage(IClientSessionChannel channel, IMessage message)
                 {
                     // Handle the message
+		    Console.WriteLine(message);
                 }
         }
 
         static void Main(string[] args)
         {
             // Handshake
-            String url = "http://localhost:8080/cometd";
+            String url = "http://localhost:8080/cometd" ;
             BayeuxClient client = new BayeuxClient(url, new List<ClientTransport>() { new LongPollingTransport(null) });
             
 	    client.handshake();
 	    client.waitFor(1000, new List<BayeuxClient.State>() { BayeuxClient.State.CONNECTED });
 
             // Subscription to channels
-            IClientSessionChannel channel = client.getChannel("/foo");
+            IClientSessionChannel channel = client.getChannel("/service/echo");
             channel.subscribe( new Listener() );
 
             // Publishing to channels
