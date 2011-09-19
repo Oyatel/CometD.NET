@@ -15,11 +15,11 @@ DEPENDENCIES
 
 The CometD.NET client library is set to compile with .NET Framework 3.5, and does not support .NET Framework Client Profile. If you get an error about a dependency on "System.Web.Extensions", you should go to your project properties and change to a framework without Client Profile.
 
-USAGE EXAMPLES
+USAGE
 
-Usage is basically the same as http://cometd.org/documentation/cometd-java/client . You can also look at https://github.com/Oyatel/oyatel-api-examples/blob/master/csharp/Oyatel.Connect.Tutorial/StreamingEvents.cs to see how we use it to communicate with our own bayeux-server.
+Usage is basically the same as in the java-client (http://cometd.org/documentation/cometd-java/client). HakanL have made a simple command-line tool which utilizes the basic functionality (http://github.com/HakanL/Auto-Deployment). You can also look at https://github.com/Oyatel/oyatel-api-examples/blob/master/csharp/Oyatel.Connect.Tutorial/StreamingEvents.cs to see how we use it to communicate with our own bayeux-server.
 
-Typical usage:
+BASIC USAGE EXAMPLE
 
 using Cometd.Client;
 using Cometd.Client.Transport;
@@ -40,7 +40,7 @@ using Cometd.Common;
         static void Main(string[] args)
         {
             // Handshake
-            String url = "http://localhost:8080/cometd" ;
+            String url = "http://localhost:8080/cometd ";
             BayeuxClient client = new BayeuxClient(url, new List<ClientTransport>() { new LongPollingTransport(null) });
             
 	    client.handshake();
