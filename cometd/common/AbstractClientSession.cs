@@ -309,14 +309,14 @@ namespace Cometd.Common
 			/* ------------------------------------------------------------ */
 			public void unsubscribe()
 			{
-				foreach (IMessageListener listener in _subscriptions) 
+				foreach (IMessageListener listener in new List<IMessageListener>(_subscriptions)) 
 					unsubscribe(listener);
 			}
 
 			/* ------------------------------------------------------------ */
 			public void resetSubscriptions()
 			{
-				foreach (IMessageListener listener in _subscriptions)
+				foreach (IMessageListener listener in new List<IMessageListener>(_subscriptions))
 				{
 					_subscriptions.Remove(listener);
 					_subscriptionCount--;
