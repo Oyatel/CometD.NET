@@ -47,20 +47,20 @@ namespace Cometd.Client.Transport
 		public override void abort()
 		{
 			//_aborted = true;
-			foreach (TransportExchange exchange in _exchanges)
-			{
-				if (exchange.request != null) exchange.request.Abort();
-				if (exchange.response != null) exchange.response.Close();
-			}
+            lock (this)
+            {
+                foreach (TransportExchange exchange in _exchanges)
+                    exchange.Abort();
 
-			_exchanges.Clear();
+                _exchanges.Clear();
+            }
 		}
 
 		public override void reset()
 		{
 		}
 
-		// Fix for not running more than two simulataneous requests:
+		// Fix for not running more than two simultaneous requests:
 		public class LongPollingRequest
 		{
 			ITransportListener listener;
@@ -101,7 +101,7 @@ namespace Cometd.Client.Transport
 
 			lock (this)
 			{
-				if (transportQueue.Count > 0 && transmissions.Count <= 2)
+				if (transportQueue.Count > 0 && transmissions.Count <= 1)
 				{
 					ok = true;
 					nextRequest = transportQueue[0];
@@ -154,7 +154,7 @@ namespace Cometd.Client.Transport
 			request.Method = "POST";
 			request.ContentType = "application/json;charset=UTF-8";
 
-			if (request.CookieContainer == null)
+            if (request.CookieContainer == null)
 				request.CookieContainer = new CookieContainer();
 			request.CookieContainer.Add(getCookieCollection());
 
@@ -166,9 +166,12 @@ namespace Cometd.Client.Transport
 			TransportExchange exchange = new TransportExchange(this, listener, messages, longPollingRequest);
 			exchange.content = content;
 			exchange.request = request;
-			_exchanges.Add(exchange);
+            lock (this)
+            {
+                _exchanges.Add(exchange);
+            }
 
-			longPollingRequest.exchange = exchange;
+            longPollingRequest.exchange = exchange;
 			addRequest(longPollingRequest);
 		}
 
@@ -180,15 +183,16 @@ namespace Cometd.Client.Transport
 			try
 			{
 				// End the operation
-				Stream postStream = exchange.request.EndGetRequestStream(asynchronousResult);
+                using (Stream postStream = exchange.request.EndGetRequestStream(asynchronousResult))
+                {
+                    // Convert the string into a byte array.
+                    byte[] byteArray = Encoding.UTF8.GetBytes(exchange.content);
+                    //Console.WriteLine("Sending message(s): {0}", exchange.content);
 
-				// Convert the string into a byte array.
-				byte[] byteArray = Encoding.UTF8.GetBytes(exchange.content);
-				//Console.WriteLine("Sending message(s): {0}", exchange.content);
-
-				// Write to the request stream.
-				postStream.Write(byteArray, 0, exchange.content.Length);
-				postStream.Close();
+                    // Write to the request stream.
+                    postStream.Write(byteArray, 0, exchange.content.Length);
+                    postStream.Close();
+                }
 
 				// Start the asynchronous operation to get the response
 				exchange.listener.onSending(ObjectConverter.ToListOfIMessage(exchange.messages));
@@ -212,30 +216,29 @@ namespace Cometd.Client.Transport
 			try
 			{
 				// End the operation
-				exchange.response = (HttpWebResponse)exchange.request.EndGetResponse(asynchronousResult);
-				Stream streamResponse = exchange.response.GetResponseStream();
-				StreamReader streamRead = new StreamReader(streamResponse);
-				string responseString = streamRead.ReadToEnd();
-				//Console.WriteLine("Received message(s): {0}", responseString);
+                string responseString;
+                using (HttpWebResponse response = (HttpWebResponse)exchange.request.EndGetResponse(asynchronousResult))
+                {
+                    using (Stream streamResponse = response.GetResponseStream())
+                    {
+                        using(StreamReader streamRead = new StreamReader(streamResponse))
+                            responseString = streamRead.ReadToEnd();
+                    }
+                    //Console.WriteLine("Received message(s): {0}", responseString);
 
+                    if (response.Cookies != null)
+                        foreach (Cookie cookie in response.Cookies)
+                            exchange.AddCookie(cookie);
+
+                    response.Close();
+                }
 				exchange.messages = DictionaryMessage.parseMessages(responseString);
-
-				// Retrieve your cookie that id's your session
-				//exchange.response.Cookies; // @@ax: What to do with cookies?
-
-				// Close the stream object
-				streamResponse.Close();
-				streamRead.Close();
-
-				// Release the HttpWebResponse
-				exchange.response.Close();
 
 				exchange.listener.onMessages(exchange.messages);
 				exchange.Dispose();
 			}
 			catch (Exception e)
 			{
-				if (exchange.response != null) exchange.response.Close();
 				exchange.listener.onException(e, ObjectConverter.ToListOfIMessage(exchange.messages));
 				exchange.Dispose();
 			}
@@ -261,7 +264,6 @@ namespace Cometd.Client.Transport
 			private LongPollingTransport parent;
 			public String content;
 			public HttpWebRequest request;
-			public HttpWebResponse response;
 			public ITransportListener listener;
 			public IList<IMutableMessage> messages;
 			public LongPollingRequest lprequest;
@@ -273,15 +275,25 @@ namespace Cometd.Client.Transport
 				listener = _listener;
 				messages = _messages;
 				request = null;
-				response = null;
 				lprequest = _lprequest;
 			}
+
+            public void AddCookie(Cookie cookie)
+            {
+                parent.addCookie(cookie);
+            }
 
 			public void Dispose()
 			{
 				parent.removeRequest(lprequest);
-				parent._exchanges.Remove(this);
+                lock(parent)
+    				parent._exchanges.Remove(this);
 			}
+
+            public void Abort()
+            {
+                if (request != null) request.Abort();
+            }
 		}
 	}
 }

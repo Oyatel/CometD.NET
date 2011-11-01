@@ -422,7 +422,11 @@ namespace Cometd.Client
 					{
 					if (Message_Fields.RECONNECT_RETRY_VALUE.Equals(action))
 					return new ConnectedState(this, oldState.handshakeFields, advice, oldState.transport, oldState.clientId);
-					}
+                    else if (Message_Fields.RECONNECT_NONE_VALUE.Equals(action))
+                        // This case happens when the connect reply arrives after a disconnect
+                        // We do not go into a disconnected state to allow normal processing of the disconnect reply
+                        return new DisconnectingState(this, oldState.transport, oldState.clientId);
+                    }
 					else
 					{
 					if (Message_Fields.RECONNECT_HANDSHAKE_VALUE.Equals(action))
