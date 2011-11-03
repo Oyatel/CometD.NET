@@ -230,11 +230,15 @@ namespace Cometd.Client
             DateTime stop = DateTime.Now.AddMilliseconds(waitMs);
             int duration = waitMs;
 
+            State s = CurrentState;
+            if(states.Contains(s))
+                return s;
+
             while (stateChanged.WaitOne(duration))
             {
                 if (stateUpdateInProgress == 0)
                 {
-                    State s = CurrentState;
+                    s = CurrentState;
                     if (states.Contains(s))
                         return s;
                 }
@@ -242,6 +246,10 @@ namespace Cometd.Client
                 duration = (int)(stop - DateTime.Now).TotalMilliseconds;
                 if (duration <= 0) break;
             }
+
+            s = CurrentState;
+            if (states.Contains(s))
+                return s;
 
             return State.INVALID;
         }
@@ -302,6 +310,29 @@ namespace Cometd.Client
                 failMessages(null, ObjectConverter.ToListOfIMessage(messages));
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Wait for send queue to be emptied
+        /// </summary>
+        /// <param name="timeoutMS"></param>
+        /// <returns>true if queue is empty, false if timed out</returns>
+        public bool waitForEmptySendQueue(int timeoutMS)
+        {
+            if (messageQueue.Count == 0)
+                return true;
+
+            DateTime start = DateTime.Now;
+
+            while ((DateTime.Now - start).TotalMilliseconds < timeoutMS)
+            {
+                if (messageQueue.Count == 0)
+                    return true;
+
+                System.Threading.Thread.Sleep(100);
+            }
+
+            return false;
         }
 
         private IList<IMutableMessage> takeMessages()
@@ -602,7 +633,7 @@ namespace Cometd.Client
 
         private bool canSend()
         {
-            return !this.Batching && !isHandshaking(this.bayeuxClientState);
+            return !isDisconnected(this.bayeuxClientState) && !this.Batching && !isHandshaking(this.bayeuxClientState);
         }
 
         protected void failMessages(Exception x, IList<IMessage> messages)
