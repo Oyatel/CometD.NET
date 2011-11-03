@@ -3,3 +3,4 @@
 /cometd2.dll
 /cometd2.pdb
 /obj
+*.user
