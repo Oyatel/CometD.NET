@@ -30,5 +30,7 @@ namespace Cometd.Client.Transport
         public abstract bool accept(String version);
 
         public abstract void send(ITransportListener listener, IList<IMutableMessage> messages);
+
+        public abstract bool isSending { get; }
     }
 }

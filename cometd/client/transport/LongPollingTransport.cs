@@ -175,6 +175,24 @@ namespace Cometd.Client.Transport
             addRequest(longPollingRequest);
         }
 
+        public override bool isSending
+        {
+            get
+            {
+                lock (this)
+                {
+                    if (transportQueue.Count > 0)
+                        return true;
+
+                    foreach (var transmission in transmissions)
+                        if (transmission.exchange.isSending)
+                            return true;
+
+                    return false;
+                }
+            }
+        }
+
         // From http://msdn.microsoft.com/en-us/library/system.net.httpwebrequest.begingetrequeststream.aspx
         private static void GetRequestStreamCallback(IAsyncResult asynchronousResult)
         {
@@ -200,6 +218,8 @@ namespace Cometd.Client.Transport
 
                 long timeout = 120000;
                 ThreadPool.RegisterWaitForSingleObject(result.AsyncWaitHandle, new WaitOrTimerCallback(TimeoutCallback), exchange, timeout, true);
+
+                exchange.isSending = false;
             }
             catch (Exception e)
             {
@@ -267,6 +287,7 @@ namespace Cometd.Client.Transport
             public ITransportListener listener;
             public IList<IMutableMessage> messages;
             public LongPollingRequest lprequest;
+            public bool isSending;
 
             public TransportExchange(LongPollingTransport _parent, ITransportListener _listener, IList<IMutableMessage> _messages,
                     LongPollingRequest _lprequest)
@@ -276,6 +297,7 @@ namespace Cometd.Client.Transport
                 messages = _messages;
                 request = null;
                 lprequest = _lprequest;
+                isSending = true;
             }
 
             public void AddCookie(Cookie cookie)

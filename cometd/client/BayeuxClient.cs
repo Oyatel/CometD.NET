@@ -312,6 +312,21 @@ namespace Cometd.Client
             }
         }
 
+        private int PendingMessages
+        {
+            get
+            {
+                int value = messageQueue.Count;
+
+                var state = bayeuxClientState;
+                var clientTransport = state.transport as ClientTransport;
+                if(clientTransport != null)
+                    value += clientTransport.isSending ? 1 : 0;
+
+                return value;
+            }
+        }
+
         /// <summary>
         /// Wait for send queue to be emptied
         /// </summary>
@@ -319,14 +334,14 @@ namespace Cometd.Client
         /// <returns>true if queue is empty, false if timed out</returns>
         public bool waitForEmptySendQueue(int timeoutMS)
         {
-            if (messageQueue.Count == 0)
+            if (PendingMessages == 0)
                 return true;
 
             DateTime start = DateTime.Now;
 
             while ((DateTime.Now - start).TotalMilliseconds < timeoutMS)
             {
-                if (messageQueue.Count == 0)
+                if (PendingMessages == 0)
                     return true;
 
                 System.Threading.Thread.Sleep(100);
